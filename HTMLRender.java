@@ -1,3 +1,5 @@
+import java.util.Scanner;
+
 /**
  *	HTMLRender
  *	This program renders HTML code into a JFrame window.
@@ -31,7 +33,7 @@ public class HTMLRender {
 	// SimpleHtmlRenderer fields
 	private SimpleHtmlRenderer render;
 	private HtmlPrinter browser;
-	//private HTMLUtilities utils;
+	private HTMLUtilities util;
 		
 	public HTMLRender() {
 		// Initialize token array
@@ -40,15 +42,16 @@ public class HTMLRender {
 		// Initialize Simple Browser
 		render = new SimpleHtmlRenderer();
 		browser = render.getHtmlPrinter();
+		util = new HTMLUtilities();
 	}
 	
 	
 	public static void main(String[] args) {
 		HTMLRender hf = new HTMLRender();
-		hf.run();
+		hf.run(args);
 	}
 	
-	public void run() {
+	public void run(String[] args) {
 		// Sample renderings from HtmlPrinter class
 		
 		// Print plain text without line feed at end
@@ -88,6 +91,45 @@ public class HTMLRender {
 		browser.printBreak();
 		browser.print("The end");
 		
+		Scanner input = null;
+		String fileName = "";
+		if(args.length > 0)
+			fileName = args[0];
+		else 
+		{
+			System.out.println("Usage: java -cp \".:SimpleHtmlRenderer.jar\" HTMLRender <htmlFileName>");
+			System.exit(0);
+		}
+		
+		input = FileUtils.openToRead(fileName);
+		
+		while (input.hasNext()) 
+		{
+			String line = input.nextLine();
+			System.out.println("\n" + line);
+			String [] tokens = util.tokenizeHTMLString(line);
+			util.printTokens(tokens);
+		}
+		input.close();
+		
+		processTokensAndRender();
+	}
+	
+	public void processTokensAndRender()
+	{
+		int count = 0;
+		while(tokens[count] != null)
+		{
+			String token = tokens[count];
+			if(TokenState.NONE)
+				browser.print(token);
+			if(token.equalsIgnoreCase("</pre>");
+				browser.println();
+			if(token.equalsIgnoreCase("<b>"))
+			{
+				String boldText = 
+			}
+		}
 	}
 	
 	
