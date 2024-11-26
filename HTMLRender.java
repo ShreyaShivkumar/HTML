@@ -29,7 +29,7 @@ public class HTMLRender {
 	// the array holding all the tokens of the HTML file
 	private String [] tokens;
 	private final int TOKENS_SIZE = 100000;	// size of array
-
+	
 	// SimpleHtmlRenderer fields
 	private SimpleHtmlRenderer render;
 	private HtmlPrinter browser;
@@ -38,7 +38,7 @@ public class HTMLRender {
 	public HTMLRender() {
 		// Initialize token array
 		tokens = new String[TOKENS_SIZE];
-		
+				
 		// Initialize Simple Browser
 		render = new SimpleHtmlRenderer();
 		browser = render.getHtmlPrinter();
@@ -55,7 +55,7 @@ public class HTMLRender {
 		// Sample renderings from HtmlPrinter class
 		
 		// Print plain text without line feed at end
-		browser.print("First line");
+		/*browser.print("First line");
 		
 		// Print line feed
 		browser.println();
@@ -89,7 +89,7 @@ public class HTMLRender {
 		// Print pre-formatted text (optional)
 		browser.printPreformattedText("Preformat Monospace\tfont");
 		browser.printBreak();
-		browser.print("The end");
+		browser.print("The end");*/
 		
 		Scanner input = null;
 		String fileName = "";
@@ -106,31 +106,96 @@ public class HTMLRender {
 		while (input.hasNext()) 
 		{
 			String line = input.nextLine();
-			System.out.println("\n" + line);
-			String [] tokens = util.tokenizeHTMLString(line);
-			util.printTokens(tokens);
+			//System.out.println("\n" + line);
+			tokens = util.tokenizeHTMLString(line);
+			//for(int i = 0; i < tokens.length; i++)
+				System.out.println(tokens[0]);
+			//util.printTokens(tokens);
+			processTokensAndRender(tokens);
 		}
 		input.close();
 		
-		processTokensAndRender();
 	}
 	
-	public void processTokensAndRender()
+	public void processTokensAndRender(String[] tokens)
 	{
 		int count = 0;
+		int charCount = 0;
+		String token = "";
 		while(tokens[count] != null)
 		{
-			String token = tokens[count];
-			if(TokenState.NONE)
-				browser.print(token);
-			if(token.equalsIgnoreCase("</pre>");
+			System.out.println("HERE");
+			charCount = token.length();
+			if(charCount > 80)
 				browser.println();
+			token = tokens[count];
+			/*if(state == TokenState.NONE)
+				browser.print(token);*/
+			if(token.equalsIgnoreCase("<pre>"))
+			{
+				String preformatted = "";
+				while(!token.equalsIgnoreCase("</pre>"))
+				{
+					token = tokens[count];
+					browser.printPreformattedText(" " + token);
+					count++;
+				}
+			}
 			if(token.equalsIgnoreCase("<b>"))
 			{
-				String boldText = 
+				String boldText = "";
+				while(!token.equals("</b>"));
+				{
+					boldText += " " + tokens[count];
+					count++;
+				}
+				browser.printBold(boldText);
 			}
+			if(token.equalsIgnoreCase("<i>"))
+			{
+				String italicText = "";
+				while(!token.equals("</i>"));
+				{
+					italicText += " " + tokens[count];
+					count++;
+				}
+				browser.printItalic(italicText);
+			}
+			else if(token.indexOf('<') == -1 && token.indexOf('>') == -1)
+			{
+				charCount = token.length();
+				if(charCount > 80)
+					browser.println();
+				boolean isPunct = false;
+				if(token.length() == 1)
+				{
+					char current = token.charAt(0);
+					//isPunct = util.isPunctuation(current);
+					switch(current)
+					{
+						case '.':
+						case ',':
+						case ';':
+						case ':':
+						case '(':
+						case ')':
+						case '?':
+						case '!':
+						case '=':
+						case '&':
+						case '~':
+						case '+':
+						case '-':
+						isPunct = true;
+						default: isPunct = false;
+					}
+				}
+				if(!isPunct)
+					browser.print(" " + token);
+				else if(isPunct)
+					browser.print(token);
+			}
+			count++;
 		}
 	}
-	
-	
 }
