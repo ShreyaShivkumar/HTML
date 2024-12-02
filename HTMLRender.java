@@ -31,9 +31,11 @@ public class HTMLRender {
 	private final int TOKENS_SIZE = 100000;	// size of array
 	
 	// SimpleHtmlRenderer fields
+	private int lineCharCount;
 	private SimpleHtmlRenderer render;
 	private HtmlPrinter browser;
 	private HTMLUtilities util;
+	private boolean inParagraph;
 		
 	public HTMLRender() {
 		// Initialize token array
@@ -43,6 +45,7 @@ public class HTMLRender {
 		render = new SimpleHtmlRenderer();
 		browser = render.getHtmlPrinter();
 		util = new HTMLUtilities();
+		inParagraph = false;
 	}
 	
 	
@@ -120,15 +123,14 @@ public class HTMLRender {
 	public void processTokensAndRender(String[] tokens)
 	{
 		int count = 0;
-		int charCount = 0;
 		String token = "";
 		while(tokens[count] != null)
 		{
-			System.out.println("HERE");
-			charCount = token.length();
-			if(charCount > 80)
-				browser.println();
+			//charCount = token.length();
+			/*if(charCount > 80)
+				browser.println();*/
 			token = tokens[count];
+			System.out.println("HERE " + token);
 			/*if(state == TokenState.NONE)
 				browser.print(token);*/
 			if(token.equalsIgnoreCase("<pre>"))
@@ -144,7 +146,7 @@ public class HTMLRender {
 			if(token.equalsIgnoreCase("<b>"))
 			{
 				String boldText = "";
-				while(!token.equals("</b>"));
+				while(!token.equalsIgnoreCase("</b>"));
 				{
 					boldText += " " + tokens[count];
 					count++;
@@ -154,46 +156,47 @@ public class HTMLRender {
 			if(token.equalsIgnoreCase("<i>"))
 			{
 				String italicText = "";
-				while(!token.equals("</i>"));
+				while(!token.equalsIgnoreCase("</i>"));
 				{
 					italicText += " " + tokens[count];
 					count++;
 				}
 				browser.printItalic(italicText);
 			}
+			if(token.equalsIgnoreCase("<p>"))
+			{
+				//String paragraph = "";
+				browser.println();
+				while(!token.equalsIgnoreCase("</p>"))
+				{
+					//paragraph += " " + tokens[count];
+					browser.print(" " + tokens[count]);
+					count++;
+				}
+				//System.out.println(paragraph);
+			}
 			else if(token.indexOf('<') == -1 && token.indexOf('>') == -1)
 			{
-				charCount = token.length();
-				if(charCount > 80)
-					browser.println();
+				
 				boolean isPunct = false;
 				if(token.length() == 1)
 				{
 					char current = token.charAt(0);
-					//isPunct = util.isPunctuation(current);
-					switch(current)
-					{
-						case '.':
-						case ',':
-						case ';':
-						case ':':
-						case '(':
-						case ')':
-						case '?':
-						case '!':
-						case '=':
-						case '&':
-						case '~':
-						case '+':
-						case '-':
-						isPunct = true;
-						default: isPunct = false;
-					}
+					isPunct = util.isPunctuation(current);
 				}
+				String printed = "";
 				if(!isPunct)
-					browser.print(" " + token);
+					printed = " " + token;
 				else if(isPunct)
-					browser.print(token);
+					printed = token;
+				browser.print(printed);
+				lineCharCount += printed.length();
+				System.out.println("CHARCOUNT " + lineCharCount);
+				if(lineCharCount >= 80)
+				{
+					browser.println();
+					lineCharCount = 0;
+				}
 			}
 			count++;
 		}
