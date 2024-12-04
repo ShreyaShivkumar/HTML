@@ -35,7 +35,11 @@ public class HTMLRender {
 	private SimpleHtmlRenderer render;
 	private HtmlPrinter browser;
 	private HTMLUtilities util;
-	private boolean inParagraph;
+	private enum TokenState { NONE, BOLD, ITALIC, PREFORMAT, HEADING1, HEADING2, 
+		HEADING3, HEADING4, HEADING5, HEADING6 };
+	private TokenState state;
+	//private boolean inHeading1, inHeading2;
+	//private boolean inHeading3;
 		
 	public HTMLRender() {
 		// Initialize token array
@@ -45,7 +49,7 @@ public class HTMLRender {
 		render = new SimpleHtmlRenderer();
 		browser = render.getHtmlPrinter();
 		util = new HTMLUtilities();
-		inParagraph = false;
+		state = TokenState.NONE;
 	}
 	
 	
@@ -133,49 +137,475 @@ public class HTMLRender {
 			System.out.println("HERE " + token);
 			/*if(state == TokenState.NONE)
 				browser.print(token);*/
-			if(token.equalsIgnoreCase("<pre>"))
-			{
-				String preformatted = "";
-				while(!token.equalsIgnoreCase("</pre>"))
-				{
-					token = tokens[count];
-					browser.printPreformattedText(" " + token);
-					count++;
-				}
-			}
-			if(token.equalsIgnoreCase("<b>"))
+				
+			breakTag(token);
+			horizontalRule(token);
+			
+			if(token.equalsIgnoreCase("<b>") || state == TokenState.BOLD)
 			{
 				String boldText = "";
-				while(!token.equalsIgnoreCase("</b>"));
+				System.out.println("BOlD: " + token);
+				if(token.equalsIgnoreCase("<b>"))
+					count++;
+				while(!token.equalsIgnoreCase("</b>") && tokens[count] != null)
 				{
-					boldText += " " + tokens[count];
+					System.out.println("STILL BOLD: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					breakTag(token);
+					horizontalRule(token);
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 80)
+					{
+						browser.printBold(boldText);
+						browser.println();
+						boldText = "";
+						lineCharCount = 0;
+					}
+					boldText += token;
 					count++;
 				}
+				if(boldText.indexOf("</b>") != -1)
+				{
+					boldText = boldText.substring(0, boldText.indexOf("</b>") - 1);
+					state = TokenState.NONE;
+				}
+				else if(boldText.indexOf("</B>") != -1)
+				{
+					boldText = boldText.substring(0, boldText.indexOf("</B>") - 1);
+					state = TokenState.NONE;
+				}
+				else
+					state = TokenState.BOLD;
 				browser.printBold(boldText);
 			}
-			if(token.equalsIgnoreCase("<i>"))
+			else if(token.equalsIgnoreCase("<i>") || state == TokenState.ITALIC)
 			{
 				String italicText = "";
-				while(!token.equalsIgnoreCase("</i>"));
+				System.out.println("italic: " + token);
+				if(token.equalsIgnoreCase("<i>"))
+					count++;
+				while(!token.equalsIgnoreCase("</i>") && tokens[count] != null)
 				{
-					italicText += " " + tokens[count];
+					System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					breakTag(token);
+					horizontalRule(token);
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 80)
+					{
+						browser.printItalic(italicText);
+						browser.println();
+						italicText = "";
+						lineCharCount = 0;
+					}
+					italicText += token;
 					count++;
 				}
+				if(italicText.indexOf("</i>") != -1)
+				{
+					italicText = italicText.substring(0, italicText.indexOf("</i>") - 1);
+					state = TokenState.NONE;
+				}
+				else if(italicText.indexOf("</I>") != -1)
+				{
+					italicText = italicText.substring(0, italicText.indexOf("</I>") - 1);
+					state = TokenState.NONE;
+				}
+				else
+					state = TokenState.ITALIC;
 				browser.printItalic(italicText);
+				System.out.println("token: " + token);
 			}
-			if(token.equalsIgnoreCase("<p>"))
+			if(token.indexOf("<p>") != -1 || token.indexOf("</p>") != -1 
+				|| token.indexOf("<P>") != -1 || token.indexOf("</P>") != -1 )
 			{
-				//String paragraph = "";
 				browser.println();
-				while(!token.equalsIgnoreCase("</p>"))
+				browser.println();
+				lineCharCount = 0;
+			}
+			if(token.equalsIgnoreCase("<pre>") || state == TokenState.PREFORMAT)
+			{
+				if(token.equalsIgnoreCase("<pre>"))
+					count++;
+				if(tokens[count] != null)
+					token = tokens[count];
+				if(token != null && !token.equalsIgnoreCase("<pre>") && !token.equalsIgnoreCase("</pre>"))
+					browser.printPreformattedText(token);
+				browser.println();
+				browser.println();
+				System.out.println("AFTER PREFORMAT");
+				if(token.equalsIgnoreCase("</pre>"))
+					state = TokenState.NONE;
+				else
+					state = TokenState.PREFORMAT;
+				//System.out.println("IN PREFORMAT");
+				//String preformatted = "";
+				
+				//count++;
+				
+				/*while(!token.equalsIgnoreCase("</pre>") && tokens[count] != null)
 				{
-					//paragraph += " " + tokens[count];
-					browser.print(" " + tokens[count]);
+					token = tokens[count];
+					System.out.println("INSIDE OF LOOP PREFORMAT " + token);
+					browser.printPreformattedText(token);
+					browser.println();
+					count++;
+				}*/
+			}
+			else if(token.equalsIgnoreCase("<q>") || token.equalsIgnoreCase("</q>"))
+			{
+				browser.print("\" ");
+			}
+			
+			else if(token.equalsIgnoreCase("<h1>") || state == TokenState.HEADING1)
+			{
+				String heading1 = "";
+				//System.out.println("italic: " + token);
+				//if(token.equalsIgnoreCase("<i>"))
+					count++;
+				while(!token.equalsIgnoreCase("</h1>") && tokens[count] != null)
+				{
+					if(state == TokenState.NONE)
+					{
+						browser.println();
+						browser.println();
+					}
+					//System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 120)
+					{
+						browser.printHeading1(heading1);
+						browser.println();
+						heading1 = "";
+						lineCharCount = 0;
+					}
+					heading1 += token;
 					count++;
 				}
-				//System.out.println(paragraph);
+				token = token.trim();
+				if(token.equalsIgnoreCase("</h1>"))
+					state = TokenState.NONE;
+				else if(!token.equalsIgnoreCase("</h1") && tokens[count] == null)
+					state = TokenState.HEADING1;
+				
+				//System.out.println("token: " + token);
+				/*String heading1 = "";
+				count++;
+				lineCharCount = 0;
+				while(!token.equalsIgnoreCase("</h1>"))
+				{
+					heading1 += " " + tokens[count];
+					lineCharCount += tokens[count] + 1;
+					count++;
+				} */
+				browser.printHeading1(heading1);
 			}
-			else if(token.indexOf('<') == -1 && token.indexOf('>') == -1)
+			else if(token.equalsIgnoreCase("<h2>") || state == TokenState.HEADING2)
+			{
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					browser.println();
+				}
+				String heading2 = "";
+				//System.out.println("italic: " + token);
+				//if(token.equalsIgnoreCase("<i>"))
+				count++;
+				while(!token.equalsIgnoreCase("</h2>") && tokens[count] != null)
+				{
+					//System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 50)
+					{
+						browser.printHeading2(heading2);
+						browser.println();
+						heading2 = "";
+						lineCharCount = 0;
+					}
+					heading2 += token;
+					count++;
+				}  
+				System.out.println("NEVER BEFORE SEEN: " + heading2);
+				System.out.println("TOKEN OF NEVER SEEN HEDING 2: " + token);
+				token = token.trim();
+				if(token.equalsIgnoreCase("</h2>"))
+					state = TokenState.NONE;
+				else if(!token.equalsIgnoreCase("</h2") && tokens[count] == null)
+					state = TokenState.HEADING2;
+				
+				browser.printHeading2(heading2);
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					browser.println();
+				}
+			}
+			else if(token.equalsIgnoreCase("<h3>") || state == TokenState.HEADING3)
+			{
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					browser.println();
+				}
+				String heading3 = "";
+				//System.out.println("italic: " + token);
+				//if(token.equalsIgnoreCase("<i>"))
+				//count++;
+				while(!token.equalsIgnoreCase("</h3>") && tokens[count] != null)
+				{
+					//System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(tokens[count].equalsIgnoreCase("<h3>"))
+						count++;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 60)
+					{
+						browser.printHeading3(heading3);
+						browser.println();
+						heading3 = "";
+						lineCharCount = 0;
+					}
+					heading3 += token;
+					count++;
+				}			
+				token = token.trim();	
+				if(token.equalsIgnoreCase("</h3>"))
+					state = TokenState.NONE;
+				else if(!token.equalsIgnoreCase("</h3>") && tokens[count] == null)
+					state = TokenState.HEADING3;
+				
+				browser.printHeading3(heading3);
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					System.out.println("OUT OF HEADING 3");
+					//browser.println();
+				}
+			}
+			else if(token.equalsIgnoreCase("<h4>") || state == TokenState.HEADING4)
+			{
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					browser.println();
+				}
+				String heading4 = "";
+				//System.out.println("italic: " + token);
+				//if(token.equalsIgnoreCase("<i>"))
+				count++;
+				while(!token.equalsIgnoreCase("</h4>") && tokens[count] != null)
+				{
+					//System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 80)
+					{
+						browser.printHeading4(heading4);
+						browser.println();
+						heading4 = "";
+						lineCharCount = 0;
+					}
+					heading4 += token;
+					count++;
+				}
+				token = token.trim();
+				if(token.equalsIgnoreCase("</h4>"))
+					state = TokenState.NONE;
+				else if(!token.equalsIgnoreCase("</h4") && tokens[count] == null)
+					state = TokenState.HEADING4;
+				
+				browser.printHeading4(heading4);
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					browser.println();
+				}
+			}
+		else if(token.equalsIgnoreCase("<h5>") || state == TokenState.HEADING5)
+			{
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					//browser.println();
+				}
+				String heading5 = "";
+				//System.out.println("italic: " + token);
+				//if(token.equalsIgnoreCase("<i>"))
+				count++;
+				while(!token.equalsIgnoreCase("</h5>") && tokens[count] != null)
+				{
+					//System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 100)
+					{
+						browser.printHeading5(heading5);
+						browser.println();
+						heading5 = "";
+						lineCharCount = 0;
+					}
+					heading5 += token;
+					count++;
+				}
+				token = token.trim();
+				if(token.equalsIgnoreCase("</h5>"))
+					state = TokenState.NONE;
+				else if(!token.equalsIgnoreCase("</h5") && tokens[count] == null)
+					state = TokenState.HEADING5;
+				
+				browser.printHeading5(heading5);
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					//browser.println();
+				}
+			}
+			else if(token.equalsIgnoreCase("<h6>") || state == TokenState.HEADING6)
+			{
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					//browser.println();
+				}
+				String heading6 = "";
+				//System.out.println("italic: " + token);
+				//if(token.equalsIgnoreCase("<i>"))
+				count++;
+				while(!token.equalsIgnoreCase("</h6>") && tokens[count] != null)
+				{
+					//System.out.println("STILL italic: " + token + " at " + count);
+					boolean isPunct = false;
+					char p = 'p';
+					if(tokens[count].length() == 1)
+					{
+						p = tokens[count].charAt(0);
+						isPunct = util.isPunctuation(p);
+					}
+					else
+						isPunct = false;
+					if(!isPunct)
+						token =  " " + tokens[count];
+					else
+						token = tokens[count];
+					lineCharCount += token.length();
+					System.out.println("LINE CHARCOUNT: " + lineCharCount + " LENGTH: " + token.length());
+					if(lineCharCount >= 120)
+					{
+						browser.printHeading6(heading6);
+						browser.println();
+						heading6 = "";
+						lineCharCount = 0;
+					}
+					heading6 += token;
+					count++;
+				}
+				token = token.trim();
+				if(token.equalsIgnoreCase("</h6>"))
+					state = TokenState.NONE;
+				else if(!token.equalsIgnoreCase("</h6") && tokens[count] == null)
+					state = TokenState.HEADING6;
+				
+				browser.printHeading6(heading6);
+				if(state == TokenState.NONE)
+				{
+					browser.println();
+					//browser.println();
+				}
+			}
+			else if((token.indexOf('<') == -1 && token.indexOf('>') == -1) && state == TokenState.NONE)
 			{
 				
 				boolean isPunct = false;
@@ -199,6 +629,24 @@ public class HTMLRender {
 				}
 			}
 			count++;
+		}
+	}
+	
+	public void breakTag(String token)
+	{
+		if(token.equalsIgnoreCase("<br>"))
+		{
+			browser.printBreak();
+			lineCharCount = 0;
+		}
+	}
+	
+	public void horizontalRule(String token)
+	{
+		if(token.equalsIgnoreCase("<hr>"))
+		{
+			browser.printHorizontalRule();
+			lineCharCount = 0;
 		}
 	}
 }
